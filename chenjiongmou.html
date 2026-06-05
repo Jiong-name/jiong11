@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>陈炯谋 — AI 全栈开发工程师</title>
+
+  <!-- ═══ CDN ═══ -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/framer-motion@11.11.17/dist/framer-motion.js"></script>
+  <script>window.FramerMotion = window.Motion;</script>
+
+  <!-- ═══ Fonts ═══ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+
+  <!-- ═══ Tailwind Config ═══ -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ["'Instrument Serif'", "'Noto Serif SC'", "serif"],
+            body: ["'Barlow'", "sans-serif"],
+            sc: ["'Noto Serif SC'", "serif"],
+          },
+          borderRadius: {
+            DEFAULT: "9999px",
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- ═══ Liquid‑Glass + Base ═══ -->
+  <style>
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: #000;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .liquid-glass {
+      background: rgba(255,255,255,0.01);
+      background-blend-mode: luminosity;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: none;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    .liquid-glass::before {
+      content: "";
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      padding: 1.4px;
+      background: linear-gradient(180deg,
+        rgba(255,255,255,0.45) 0%,
+        rgba(255,255,255,0.15) 20%,
+        rgba(255,255,255,0) 40%,
+        rgba(255,255,255,0) 60%,
+        rgba(255,255,255,0.15) 80%,
+        rgba(255,255,255,0.45) 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .liquid-glass-strong {
+      background: rgba(255,255,255,0.01);
+      background-blend-mode: luminosity;
+      backdrop-filter: blur(50px);
+      -webkit-backdrop-filter: blur(50px);
+      border: none;
+      box-shadow: 4px 4px 4px rgba(0,0,0,0.05), inset 0 1px 1px rgba(255,255,255,0.15);
+      position: relative;
+      overflow: hidden;
+    }
+    .liquid-glass-strong::before {
+      content: "";
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      padding: 1.4px;
+      background: linear-gradient(180deg,
+        rgba(255,255,255,0.5) 0%,
+        rgba(255,255,255,0.2) 20%,
+        rgba(255,255,255,0) 40%,
+        rgba(255,255,255,0) 60%,
+        rgba(255,255,255,0.2) 80%,
+        rgba(255,255,255,0.5) 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- ═══ FadingVideo ═══ -->
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+    const { AnimatePresence } = window.FramerMotion;
+
+    const FADE_MS = 500;
+    const FADE_OUT_LEAD = 0.55;
+
+    function FadingVideo({ src, className, style }) {
+      const videoRef = useRef(null);
+      const rafRef = useRef(null);
+      const fadingOutRef = useRef(false);
+
+      const fadeTo = useCallback((target, duration = FADE_MS) => {
+        const video = videoRef.current;
+        if (!video) return;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+        const start = performance.now();
+        const initial = parseFloat(video.style.opacity || 0);
+
+        function step(now) {
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          video.style.opacity = initial + (target - initial) * progress;
+          if (progress < 1) {
+            rafRef.current = requestAnimationFrame(step);
+          }
+        }
+        rafRef.current = requestAnimationFrame(step);
+      }, []);
+
+      useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const onLoaded = () => {
+          video.style.opacity = "0";
+          video.play();
+          fadeTo(1);
+        };
+
+        const onTimeUpdate = () => {
+          if (!fadingOutRef.current && video.duration - video.currentTime <= FADE_OUT_LEAD && video.duration - video.currentTime > 0) {
+            fadingOutRef.current = true;
+            fadeTo(0);
+          }
+        };
+
+        const onEnded = () => {
+          video.style.opacity = "0";
+          setTimeout(() => {
+            if (!video) return;
+            video.currentTime = 0;
+            video.play();
+            fadingOutRef.current = false;
+            fadeTo(1);
+          }, 100);
+        };
+
+        video.addEventListener("loadeddata", onLoaded);
+        video.addEventListener("timeupdate", onTimeUpdate);
+        video.addEventListener("ended", onEnded);
+
+        return () => {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          video.removeEventListener("loadeddata", onLoaded);
+          video.removeEventListener("timeupdate", onTimeUpdate);
+          video.removeEventListener("ended", onEnded);
+        };
+      }, [fadeTo]);
+
+      return (
+        <video
+          ref={videoRef}
+          src={src}
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          className={className}
+          style={{ ...style, opacity: 0 }}
+        />
+      );
+    }
+    window.FadingVideo = FadingVideo;
+  </script>
+
+  <!-- ═══ BlurText ═══ -->
+  <script type="text/babel">
+    const { motion } = window.FramerMotion;
+
+    function BlurText({ text, className }) {
+      const [visible, setVisible] = React.useState(false);
+      const containerRef = React.useRef(null);
+
+      React.useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const obs = new IntersectionObserver(
+          ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+          { threshold: 0.1 }
+        );
+        obs.observe(el);
+        return () => obs.disconnect();
+      }, []);
+
+      const words = text.split(" ");
+
+      return (
+        <p ref={containerRef} className={className} style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", rowGap: "0.1em" }}>
+          {words.map((word, i) => (
+            <motion.span
+              key={i}
+              initial={{ filter: "blur(10px)", opacity: 0, y: 50 }}
+              animate={visible ? {
+                filter: ["blur(10px)", "blur(5px)", "blur(0px)"],
+                opacity: [0, 0.5, 1],
+                y: [50, -5, 0],
+              } : {}}
+              transition={{
+                duration: 0.7,
+                times: [0, 0.5, 1],
+                ease: "easeOut",
+                delay: (i * 100) / 1000,
+              }}
+              style={{ display: "inline-block", marginRight: "0.28em" }}
+            >
+              {word}
+            </motion.span>
+          ))}
+        </p>
+      );
+    }
+    window.BlurText = BlurText;
+  </script>
+
+  <!-- ═══ Navbar ═══ -->
+  <script type="text/babel">
+    function Navbar() {
+      const { motion } = window.FramerMotion;
+
+      const scrollTo = (id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top + window.pageYOffset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      };
+
+      return (
+        <motion.nav
+          initial={{ filter: "blur(10px)", opacity: 0, y: -20 }}
+          animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="fixed top-4 px-8 lg:px-16 z-50 w-full flex items-center justify-between"
+          style={{ left: 0, right: 0 }}
+        >
+          {/* Left — avatar circle */}
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="liquid-glass rounded-full w-12 h-12 flex items-center justify-center cursor-pointer" style={{ background: 'rgba(255,255,255,0.01)', backgroundBlendMode: 'luminosity', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', border: 'none', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}>
+            <span className="font-heading italic text-white text-xl lowercase" style={{ fontFamily: "'Instrument Serif', serif" }}>c</span>
+          </button>
+
+          {/* Center — nav pill (desktop) */}
+          <div className="hidden md:flex liquid-glass rounded-full px-1.5 py-1.5 items-center gap-0">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="px-3 py-2 text-sm font-medium text-white/90 font-body bg-transparent border-none cursor-pointer hover:text-white transition-colors">首页</button>
+            <button onClick={() => scrollTo('work')} className="px-3 py-2 text-sm font-medium text-white/90 font-body bg-transparent border-none cursor-pointer hover:text-white transition-colors">作品</button>
+            <button onClick={() => scrollTo('capabilities')} className="px-3 py-2 text-sm font-medium text-white/90 font-body bg-transparent border-none cursor-pointer hover:text-white transition-colors">技能</button>
+            <button onClick={() => scrollTo('experience')} className="px-3 py-2 text-sm font-medium text-white/90 font-body bg-transparent border-none cursor-pointer hover:text-white transition-colors">经历</button>
+            <button onClick={() => scrollTo('about')} className="px-3 py-2 text-sm font-medium text-white/90 font-body bg-transparent border-none cursor-pointer hover:text-white transition-colors">关于</button>
+            <button onClick={() => scrollTo('contact')} className="px-3 py-2 text-sm font-medium text-white/90 font-body bg-transparent border-none cursor-pointer hover:text-white transition-colors">联系</button>
+            <button onClick={() => scrollTo('contact')} className="bg-white text-black rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap hover:bg-white/90 transition-colors border-none cursor-pointer">
+              联系我 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline ml-1"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+            </button>
+          </div>
+
+          {/* Right — spacer */}
+          <div className="w-12 h-12 invisible" />
+        </motion.nav>
+      );
+    }
+    window.Navbar = Navbar;
+  </script>
+
+  <!-- ═══ Hero Section ═══ -->
+  <script type="text/babel">
+    const { motion } = window.FramerMotion;
+    const { FadingVideo, BlurText } = window;
+
+    function Hero() {
+      return (
+        <section id="hero" className="relative h-screen w-full overflow-hidden bg-black">
+          <FadingVideo
+            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4"
+            className="absolute left-1/2 top-0 -translate-x-1/2 object-cover object-top z-0"
+            style={{ width: "120%", height: "120%" }}
+          />
+
+          <div className="relative z-10 flex flex-col h-full">
+
+            <div className="flex-1 flex flex-col items-center justify-center pt-24 px-4">
+              {/* Badge */}
+              <motion.div
+                initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+                animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
+                className="liquid-glass rounded-full flex items-center"
+              >
+                <span className="bg-white text-black rounded-full px-3 py-1 text-xs font-semibold font-body">AI</span>
+                <span className="text-sm text-white/90 pr-3 pl-2 font-body">全栈开发工程师 · 10+ 项目交付</span>
+              </motion.div>
+
+              {/* Headline */}
+              <BlurText
+                text="Code Beyond Limits Shape the Future"
+                className="text-6xl md:text-7xl lg:text-[5.5rem] font-heading italic text-white leading-[0.8] max-w-2xl tracking-[-4px] mt-5"
+              />
+
+              {/* Subheading */}
+              <motion.p
+                initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+                animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
+                className="mt-4 text-sm md:text-base text-white max-w-2xl font-body font-light leading-tight text-center"
+              >
+                从像素级 UI 到全栈架构。Vue 3 / Java / Python 技术栈驱动高性能 Web 应用。
+                让每一行代码都创造可衡量的价值。
+              </motion.p>
+
+              {/* CTAs */}
+              <motion.div
+                initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+                animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 1.1, ease: "easeOut" }}
+                className="flex items-center gap-6 mt-6"
+              >
+                <button onClick={() => { const el = document.getElementById('work'); if (el) { const top = el.getBoundingClientRect().top + window.pageYOffset; window.scrollTo({ top, behavior: 'smooth' }); } }} className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-medium text-white no-underline flex items-center gap-2 font-body hover:text-white/80 transition-colors border-none cursor-pointer" style={{fontFamily: 'inherit'}}>
+                  查看作品 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                </button>
+                <button onClick={() => { const el = document.getElementById('capabilities'); if (el) { const top = el.getBoundingClientRect().top + window.pageYOffset; window.scrollTo({ top, behavior: 'smooth' }); } }} className="text-white/70 text-sm font-medium font-body no-underline flex items-center gap-1.5 hover:text-white transition-colors border-none bg-transparent cursor-pointer" style={{fontFamily: 'inherit'}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+                  了解技能
+                </button>
+              </motion.div>
+
+              {/* Stats */}
+              <motion.div
+                initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+                animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 1.3, ease: "easeOut" }}
+                className="flex items-stretch gap-4 mt-8 flex-wrap justify-center"
+              >
+                <div className="liquid-glass p-5 w-[220px]" style={{ borderRadius: "1.25rem" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <div className="font-heading italic text-white text-4xl tracking-[-1px] leading-none mt-3">10<small style={{fontSize:"0.5em",verticalAlign:"super"}}>+</small></div>
+                  <div className="text-xs text-white font-body font-light mt-2">项目交付经验</div>
+                </div>
+                <div className="liquid-glass p-5 w-[220px]" style={{ borderRadius: "1.25rem" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  <div className="font-heading italic text-white text-4xl tracking-[-1px] leading-none mt-3">Vue 3</div>
+                  <div className="text-xs text-white font-body font-light mt-2">核心技术栈</div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Partners / Tech */}
+            <motion.div
+              initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+              animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 1.4, ease: "easeOut" }}
+              className="flex flex-col items-center gap-4 pb-8"
+            >
+              <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body">
+                掌握现代全栈技术生态
+              </div>
+              <div className="flex gap-12 md:gap-16 font-heading italic text-white text-2xl md:text-3xl tracking-tight flex-wrap justify-center">
+                <span>Vue.js</span>
+                <span>React</span>
+                <span>Java</span>
+                <span>Python</span>
+                <span>MySQL</span>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      );
+    }
+    window.Hero = Hero;
+  </script>
+
+  <!-- ═══ Capabilities Section ═══ -->
+  <script type="text/babel">
+    const { motion } = window.FramerMotion;
+    const { FadingVideo } = window;
+
+    function Capabilities() {
+      const cards = [
+        {
+          icon: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+              <path d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v14q0 .825-.587 1.413T19 21H5Zm1-4h12l-3.75-5-3 4L9 13l-3 4Z"/>
+            </svg>
+          ),
+          tags: ["Vue 3", "React", "TypeScript", "CSS Grid"],
+          title: "前端工程",
+          body: "构建像素级精准的响应式界面。Vue 3 全家桶 + 现代 CSS 排版系统，UI 还原精度控制在 2px 以内。从企业官网到单页应用，交付高性能用户体验。",
+        },
+        {
+          icon: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+              <path d="M4 6.47 5.76 10H20v8H4V6.47M22 4h-4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.89-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4Z"/>
+            </svg>
+          ),
+          tags: ["Java", "Python", "MySQL", "REST API"],
+          title: "后端架构",
+          body: "扎实的 Java + Python 后端能力。MVC 架构设计，RESTful API 开发，MySQL 数据库建模。从桌面应用到 Web 服务，覆盖全栈数据链路。",
+        },
+        {
+          icon: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+              <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1Zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7Z"/>
+            </svg>
+          ),
+          tags: ["Git", "Webpack", "AI Tools", "Coursera"],
+          title: "工程效能",
+          body: "Git 工作流 + Webpack 构建优化 + AI 辅助开发。持续学习，Coursera 认证。代码体积缩减 20%，首屏加载优化 30%，WebP 图片体积减少 40%。",
+        },
+      ];
+
+      return (
+        <section id="capabilities" className="relative min-h-screen w-full overflow-hidden bg-black">
+          <FadingVideo
+            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_094631_d30ab262-45ee-4b7d-99f3-5d5848c8ef13.mp4"
+            className="absolute inset-0 w-full h-full object-cover z-0"
+            style={{}}
+          />
+
+          <div className="relative z-10 px-8 md:px-16 lg:px-20 pt-24 pb-10 flex flex-col min-h-screen">
+            {/* Header */}
+            <div className="mb-auto">
+              <p className="text-sm font-body text-white/80 mb-6">// 核心能力</p>
+              <h2 className="font-heading italic text-white text-6xl md:text-7xl lg:text-[6rem] leading-[0.9] tracking-[-3px]">
+                Production<br/>evolved
+              </h2>
+            </div>
+
+            {/* Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
+              {cards.map((card, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ filter: "blur(10px)", opacity: 0, y: 30 }}
+                  whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.6, delay: i * 0.12, ease: "easeOut" }}
+                  className="liquid-glass flex flex-col"
+                  style={{ borderRadius: "1.25rem", padding: "24px", minHeight: "360px" }}
+                >
+                  {/* Top row */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="liquid-glass flex items-center justify-center" style={{ width: "44px", height: "44px", borderRadius: "0.75rem" }}>
+                      {card.icon}
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-1.5" style={{ maxWidth: "70%" }}>
+                      {card.tags.map((tag, j) => (
+                        <span key={j} className="liquid-glass rounded-full px-3 py-1 text-[11px] text-white/90 font-body whitespace-nowrap">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Spacer */}
+                  <div className="flex-1" />
+
+                  {/* Bottom */}
+                  <div className="mt-6">
+                    <h3 className="font-heading italic text-white text-3xl md:text-4xl tracking-[-1px] leading-none">
+                      {card.title}
+                    </h3>
+                    <p className="mt-3 text-sm text-white/90 font-body font-light leading-snug" style={{ maxWidth: "32ch" }}>
+                      {card.body}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+    window.Capabilities = Capabilities;
+  </script>
+
+  <!-- ═══ Selected Work ═══ -->
+  <script type="text/babel">
+    const { motion } = window.FramerMotion;
+
+    function SelectedWork() {
+      const projects = [
+        {
+          tag: "前端开发",
+          title: "企业官网重构",
+          date: "2024.07 — 2024.08",
+          desc: "响应式三端布局，CSS 优化 30%，JS 缩减 20%，UI 精度 2px。",
+          metrics: ["30% 性能提升", "2px 精度", "5 人团队"],
+        },
+        {
+          tag: "全栈开发",
+          title: "TodoList 应用",
+          date: "2024.05 — 2024.06",
+          desc: "Vue 3 + Pinia + Webpack，Coursera 认证。",
+          metrics: ["Vue 3", "Coursera", "负责人"],
+        },
+        {
+          tag: "独立开发",
+          title: "响应式博客",
+          date: "2023.10 — 2023.11",
+          desc: "语义化 HTML5/CSS3/ES6+，多浏览器兼容，Git 版本管理。",
+          metrics: ["独立完成", "10% 优化", "GitHub"],
+        },
+      ];
+
+      return (
+        <section id="work" className="relative w-full overflow-hidden bg-black">
+          <div className="relative z-10 px-8 md:px-16 lg:px-20 py-24">
+            <p className="text-sm font-body text-white/80 mb-6">// 精选作品</p>
+            <h2 className="font-heading italic text-white text-6xl md:text-7xl lg:text-[5rem] leading-[0.9] tracking-[-3px] mb-12">
+              Selected<br/>Work
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {projects.map((p, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ filter: "blur(10px)", opacity: 0, y: 30 }}
+                  whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ duration: 0.6, delay: i * 0.12, ease: "easeOut" }}
+                  className="liquid-glass flex flex-col"
+                  style={{ borderRadius: "1.25rem", padding: "24px", minHeight: "280px" }}
+                >
+                  <span className="inline-block bg-white text-black rounded-full px-3 py-1 text-xs font-semibold font-body w-fit mb-4">
+                    {p.tag}
+                  </span>
+                  <h3 className="font-heading italic text-white text-3xl md:text-4xl tracking-[-1px] leading-none mb-2">
+                    {p.title}
+                  </h3>
+                  <p className="text-xs text-white/60 font-body font-light mb-3">{p.date}</p>
+                  <p className="text-sm text-white/90 font-body font-light leading-snug flex-1">
+                    {p.desc}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {p.metrics.map((m, j) => (
+                      <span key={j} className="liquid-glass rounded-full px-3 py-1 text-[11px] text-white/80 font-body">
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+    window.SelectedWork = SelectedWork;
+  </script>
+
+  <!-- ═══ Experience ═══ -->
+  <script type="text/babel">
+    const { motion } = window.FramerMotion;
+
+    function Experience() {
+      const items = [
+        { date: "2024.07 — 08", role: "前端开发", title: "企业官网重构", sub: "5 人团队 · 核心开发者", desc: "主导响应式布局与性能优化。CSS 加载优化 30%，JS 体积缩减 20%，UI 精度 2px。" },
+        { date: "2024.05 — 06", role: "全栈开发", title: "TodoList 应用", sub: "3 人团队 · 项目负责人", desc: "Vue 3 + Pinia + Webpack 全栈实践，获 Coursera 认证。" },
+        { date: "2024.04", role: "后端开发", title: "Java Swing 桌面应用", sub: "课程项目", desc: "MVC 架构，事件驱动编程模型。" },
+        { date: "2023.10 — 11", role: "独立开发", title: "个人博客", sub: "从设计到部署 · 独立完成", desc: "语义化 HTML5/CSS3/ES6+，多浏览器兼容，Git 版本管理。" },
+        { date: "2023.06 — 07", role: "UI 设计助理", title: "图像处理与 Web 优化", sub: "10+ 人团队", desc: "Photoshop UI 素材设计，WebP 格式替代传统图片，体积减少 40%。" },
+      ];
+
+      return (
+        <section id="experience" className="relative w-full overflow-hidden bg-black">
+          <div className="relative z-10 px-8 md:px-16 lg:px-20 py-24">
+            <p className="text-sm font-body text-white/80 mb-6">// 经历</p>
+            <h2 className="font-heading italic text-white text-6xl md:text-7xl lg:text-[5rem] leading-[0.9] tracking-[-3px] mb-12">
+              Experience
+            </h2>
+
+            <div className="flex flex-col gap-0">
+              {items.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+                  whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: i * 0.08, ease: "easeOut" }}
+                  className="flex flex-col md:flex-row md:items-baseline gap-3 md:gap-8 py-5 border-b border-white/10"
+                >
+                  <span className="font-body text-xs text-white/50 whitespace-nowrap min-w-[100px] tracking-wider">
+                    {item.date}
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 flex-wrap mb-1">
+                      <span className="bg-white text-black rounded-full px-2.5 py-0.5 text-[11px] font-semibold font-body">
+                        {item.role}
+                      </span>
+                      <h4 className="font-heading italic text-white text-xl tracking-[-0.5px] leading-tight">
+                        {item.title}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-white/50 font-body font-light mb-1">{item.sub}</p>
+                    <p className="text-sm text-white/80 font-body font-light leading-snug">{item.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+    window.Experience = Experience;
+  </script>
+
+  <!-- ═══ About ═══ -->
+  <script type="text/babel">
+    const { motion } = window.FramerMotion;
+
+    function About() {
+      const skills = {
+        frontend: ["Vue.js 3", "React", "JavaScript ES6+", "HTML5/CSS3", "Canvas", "Pinia", "Vue Router"],
+        backend: ["Java", "Python", "MySQL", "RESTful API"],
+        tools: ["Git", "npm/Webpack", "VS Code", "Chrome DevTools", "Photoshop", "AI Tools"],
+      };
+
+      return (
+        <section id="about" className="relative w-full overflow-hidden bg-black">
+          <div className="relative z-10 px-8 md:px-16 lg:px-20 py-24">
+            <p className="text-sm font-body text-white/80 mb-6">// 关于</p>
+            <h2 className="font-heading italic text-white text-6xl md:text-7xl lg:text-[5rem] leading-[0.9] tracking-[-3px] mb-12">
+              About
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <motion.div
+                initial={{ filter: "blur(10px)", opacity: 0, y: 30 }}
+                whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <p className="text-white/90 font-body font-light leading-relaxed text-base mb-4">
+                  计算机科学与技术专业在读（2022 — 2026）。
+                  专注于<strong className="text-white font-medium">全栈 Web 开发</strong>，
+                  熟练掌握 Vue.js 3 全家桶及现代前端工程化体系，
+                  同时具备 Java + Python + MySQL 后端开发能力。
+                </p>
+                <p className="text-white/80 font-body font-light leading-relaxed text-sm">
+                  注重代码质量与 UI 还原度。在校期间累计交付 10+ 项目，
+                  持续通过 Coursera 等平台学习前沿技术。善于利用 AI 工具提升开发效率。
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ filter: "blur(10px)", opacity: 0, y: 30 }}
+                whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+                className="flex flex-col gap-5"
+              >
+                {Object.entries(skills).map(([cat, tags], ci) => (
+                  <div key={cat}>
+                    <p className="text-xs text-white/40 font-body uppercase tracking-[0.15em] mb-2.5">{cat === "frontend" ? "前端" : cat === "backend" ? "后端" : "工具链"}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((t, ti) => (
+                        <span key={ti} className={`liquid-glass rounded-full px-3.5 py-1.5 text-xs font-body whitespace-nowrap ${ti === 0 ? "bg-white/15 text-white" : "text-white/80"}`}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+    window.About = About;
+  </script>
+
+  <!-- ═══ Contact ═══ -->
+  <script type="text/babel">
+    const { motion } = window.FramerMotion;
+
+    function Contact() {
+      return (
+        <section id="contact" className="relative w-full overflow-hidden bg-black">
+          <div className="relative z-10 px-8 md:px-16 lg:px-20 py-24">
+            <p className="text-sm font-body text-white/80 mb-6">// 联系</p>
+            <h2 className="font-heading italic text-white text-6xl md:text-7xl lg:text-[5rem] leading-[0.9] tracking-[-3px] mb-12">
+              Get in<br/>Touch
+            </h2>
+
+            <motion.div
+              initial={{ filter: "blur(10px)", opacity: 0, y: 30 }}
+              whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-12"
+            >
+              <p className="text-white/90 font-body font-light leading-relaxed text-base">
+                目前在读，开放于实习与项目合作机会。<br/>
+                如果你对我的作品感兴趣，或者有合适的岗位想聊聊，欢迎随时联系。
+              </p>
+
+              <div className="flex flex-col gap-4">
+                <a href="mailto:2587443260@qq.com" className="liquid-glass rounded-full px-5 py-3 text-sm text-white font-body no-underline flex items-center gap-3 hover:text-white/80 transition-colors">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  2587443260@qq.com
+                </a>
+                <a href="tel:13692015583" className="liquid-glass rounded-full px-5 py-3 text-sm text-white font-body no-underline flex items-center gap-3 hover:text-white/80 transition-colors">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  136 9201 5583
+                </a>
+                <a href="mailto:2587443260@qq.com" className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-medium text-white font-body no-underline flex items-center gap-2 w-fit mt-2 hover:text-white/80 transition-colors">
+                  发送邮件 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                </a>
+              </div>
+            </motion.div>
+
+            <div className="text-center mt-20 pt-8 border-t border-white/10">
+              <p className="text-xs text-white/30 font-body tracking-wider">© 2026 陈炯谋 · Built with care</p>
+            </div>
+          </div>
+        </section>
+      );
+    }
+    window.Contact = Contact;
+  </script>
+
+  <!-- ═══ App ═══ -->
+  <script type="text/babel">
+    const { Navbar, Hero, Capabilities, SelectedWork, Experience, About, Contact } = window;
+
+    function App() {
+      // Suppress benign Framer Motion list-key warnings
+      React.useEffect(() => {
+        const orig = console.error;
+        console.error = (...args) => {
+          if (typeof args[0] === "string" && args[0].includes("prop `key` is not supported")) return;
+          orig(...args);
+        };
+      }, []);
+
+      return (
+        <main className="bg-black">
+          <Navbar />
+          <Hero />
+          <Capabilities />
+          <SelectedWork />
+          <Experience />
+          <About />
+          <Contact />
+        </main>
+      );
+    }
+    window.App = App;
+  </script>
+
+  <!-- ═══ Mount ═══ -->
+  <script type="text/babel">
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
